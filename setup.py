@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='needle',
+    name='needlepy',
     version='1.0',
     packages=find_packages(),
     url='https://github.com/BitTheByte/Needle',
