@@ -185,7 +185,7 @@ def __worker(wid, target, channel, lock, callback=None):
         with lock:
             channel.jobs -= 1
 
-        if isinstance(callback, FunctionType) and isinstance(callback, MethodType):
+        if not isinstance(callback, FunctionType) and not isinstance(callback, MethodType):
             continue
 
         callback_result = ThreadResult(function=target, arguments=args, channel=channel,
