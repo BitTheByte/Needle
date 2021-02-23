@@ -182,14 +182,12 @@ def __worker(wid, target, channel, lock, callback=None):
 
         log(INFO, f'Worker<{wid}> finished {target.__name__}{args} -> {_return}')
 
+        
+        if  isinstance(callback, FunctionType) or  isinstance(callback, MethodType):
+            callback_result = ThreadResult(function=target, arguments=args, channel=channel, worker_id=wid, function_return=_return)
+            callback(callback_result)
+
         with lock:
             channel.jobs -= 1
-
-        if not isinstance(callback, FunctionType) and not isinstance(callback, MethodType):
-            continue
-
-        callback_result = ThreadResult(function=target, arguments=args, channel=channel,
-                                       worker_id=wid, function_return=_return)
-        callback(callback_result)
 
     log(INFO, f'Worker<{wid}> exited')
