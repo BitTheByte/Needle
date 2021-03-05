@@ -88,7 +88,7 @@ def bootstrap_task(target, arguments, worker_id=None, channel=None):
     return result
 
 
-def GroupWorkers(target: FunctionType, arguments: list, concurrent: int, kernel=None):
+def GroupWorkers(target: FunctionType, arguments: list, concurrent: int, kernel=''):
     """
     Used to start a number concurrent threads of a target function and predefined arguments list
     :param target: function or method pointer
