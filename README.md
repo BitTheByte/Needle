@@ -35,8 +35,19 @@ hosts = [
     ("https://yahoo.com",)
 ]
 
-for i in needle.GroupWorkers(target=requests.get, arguments=hosts, concurrent=2):
-    print(i.arguments, i._return )
+def main():
+    for i in needle.GroupWorkers(target=requests.get, arguments=hosts, concurrent=2, kernel='needlpy'):
+        print(i.arguments, i._return )
+
+    # see https://stackoverflow.com/questions/51828790/what-is-the-difference-between-processpoolexecutor-and-threadpoolexecutor
+    for i in needle.GroupWorkers(target=requests.get, arguments=hosts, concurrent=2, kernel='threadpoolexecutor'):
+        print(i.arguments, i._return )
+
+    for i in needle.GroupWorkers(target=requests.get, arguments=hosts, concurrent=2, kernel='processpoolexecutor'):
+        print(i.arguments, i._return )
+
+if __name__ == '__main__':
+    main()
 ```
 Needle supports muliple threading techniques other than shown at the example for more examples and techniques see [/examples](examples)
 
