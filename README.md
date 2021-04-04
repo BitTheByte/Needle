@@ -40,6 +40,7 @@ def main():
         print(i.arguments, i._return )
 
     # see https://stackoverflow.com/questions/51828790/what-is-the-difference-between-processpoolexecutor-and-threadpoolexecutor
+    # if kernel argument is not set needle uses threadpoolexecutor by default
     for i in needle.GroupWorkers(target=requests.get, arguments=hosts, concurrent=2, kernel='threadpoolexecutor'):
         print(i.arguments, i._return )
 
