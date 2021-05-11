@@ -88,9 +88,10 @@ def bootstrap_task(target, arguments, worker_id=None, channel=None):
     return result
 
 
-def GroupWorkers(target: FunctionType, arguments: list, concurrent: int, kernel='threadpoolexecutor'):
+def GroupWorkers(target: FunctionType, arguments: list, concurrent: int, name: str = 'needle.thread', kernel='threadpoolexecutor'):
     """
     Used to start a number concurrent threads of a target function and predefined arguments list
+    :param name: thread name
     :param target: function or method pointer
     :param arguments: list of predefined sorted tuples that will be passed to the target function/method
     :param concurrent: number of concurrent threads running at any given time
@@ -113,11 +114,11 @@ def GroupWorkers(target: FunctionType, arguments: list, concurrent: int, kernel=
         futures  = []
         
         if 'thread' in kernel.lower():
-            executor = ThreadPoolExecutor(max_workers=concurrent)
+            executor = ThreadPoolExecutor(max_workers=concurrent, thread_name_prefix=name)
             log(INFO, "using python ThreadPoolExecutor API")
 
         elif 'process' in kernel.lower():
-            executor = ProcessPoolExecutor(max_workers=concurrent)
+            executor = ProcessPoolExecutor(max_workers=concurrent, thread_name_prefix=name)
             log(INFO, "using python ProcessPoolExecutor API")
         
         else:
