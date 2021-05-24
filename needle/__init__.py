@@ -5,6 +5,7 @@ from colorama import Fore, init
 
 import concurrent.futures as confutures
 import threading
+import queue
 import time
 
 init(autoreset=True)
@@ -25,7 +26,7 @@ def log(tag, msg):
             print(f'[{Fore.LIGHTBLACK_EX}INFO{Fore.RESET}]: {msg}\n', end='')
 
 class Channel:
-    def __init__(self, name='default'):
+    def __init__(self, name='needle.Channel'):
         self.name = name
         self.stop = False
         self.threads = []
@@ -61,6 +62,33 @@ class Channel:
         self.stop = True
         log(INFO, f'Channel<{self.name}-{hex(id(self)).upper()}> is closed')
 
+class FuturesChannel:
+    def __init__(self, target, concurrent, name='needle.FuturesChannel', kernel=''):
+        self.target  = target
+        if 'poolexecutor' in kernel.lower():
+            self.channel = ProcessPoolExecutor(max_workers=concurrent, thread_name_prefix=name)
+        else:
+            self.channel = ThreadPoolExecutor(max_workers=concurrent, thread_name_prefix=name)
+        self.open    = True
+        self.name    = name
+        self.futures = []
+        self.blocker = queue.Queue()
+
+    def close_and_wait(self):
+        self.close()
+        self.wait()
+        
+    def close(self):
+        self.open = False
+        log(INFO, f'Channel<{self.name}-{hex(id(self)).upper()}> close requested')
+
+    def wait(self):
+        self.blocker.get(block=True)
+
+    def append(self, *args):
+        future = self.channel.submit(bootstrap_task, self.target, args, -1, self.channel)
+        log(INFO, f'Channel<{self.name}-{hex(id(self)).upper()}> appended with {args}')
+        self.futures.append(future)
 
 class ThreadResult:
     def __init__(self, function=None, arguments=None, channel=None, worker_id=None, function_return=None):
@@ -71,9 +99,8 @@ class ThreadResult:
         self._return    = function_return
         self.exception  = None
 
-
 def bootstrap_task(target, arguments, worker_id=None, channel=None):
-    result = ThreadResult()
+    result           = ThreadResult()
     result.function  = target
     result.arguments = arguments
     result.channel   = channel
@@ -87,6 +114,41 @@ def bootstrap_task(target, arguments, worker_id=None, channel=None):
 
     return result
 
+def FuturesChannelWorkers(channel: FuturesChannel, callback: FunctionType):
+    """
+    Used to start a group of concurrent workers receiving sorted arguments from a specific channel.
+    workers will not exit unless the channel request so by calling ``channel.close()``
+    :param channel: instance of FuturesChannel class
+    :param callback: function to call when thread finishes 'callback(result)'
+    Example:
+    >>> import time
+    >>> import random
+    >>> import needle
+    >>>
+    >>> def myfunction(a, b):
+    >>>     time.sleep(random.randint(1,10))
+    >>>     return a + b
+    >>>
+    >>> def on_finish(result):
+    >>>     print('Args: %s, Result: %s' % (result.arguments, result._return))
+    >>>
+    >>> channel = needle.FuturesChannel(target=myfunction, concurrent=2, name='test')
+    >>> channel.append(1,2)
+    >>> needle.FuturesChannelWorkers(channel=channel, callback=on_finish)
+    >>> channel.append(2,3)
+    >>> channel.close()
+    """
+    def __pool__():
+        while channel.open or len(channel.futures) != 0:
+            for future in confutures.as_completed(channel.futures):
+                channel.futures.remove(future)
+                result = future.result()
+                callback(result)
+            time.sleep(0.1)
+        channel.blocker.put(True)
+        log(INFO, f'Channel<{channel.name}-{hex(id(channel)).upper()}> closed')
+
+    threading.Thread(target=__pool__, name='NeedlePool').start()
 
 def GroupWorkers(target: FunctionType, arguments: list, concurrent: int, name: str = 'needle.thread', kernel='threadpoolexecutor'):
     """
@@ -96,7 +158,6 @@ def GroupWorkers(target: FunctionType, arguments: list, concurrent: int, name: s
     :param arguments: list of predefined sorted tuples that will be passed to the target function/method
     :param concurrent: number of concurrent threads running at any given time
     :param kernel: parallelism/concurrency technique {ThreadPoolExecutor, ProcessPoolExecutor, NeedlePY}
-
     Example:
         >>> import time
         >>> import random
@@ -164,7 +225,6 @@ def GroupWorkers(target: FunctionType, arguments: list, concurrent: int, name: s
         time.sleep(0.2)
     channel.close()
 
-
 def ChannelWorkers(target: FunctionType, channel: Channel, concurrent: int = 5, callback=None,
                    blocking: bool = False, autoclose: bool = False):
     """
@@ -213,7 +273,6 @@ def ChannelWorkers(target: FunctionType, channel: Channel, concurrent: int = 5, 
 
     if autoclose:
         channel.close()
-
 
 def __worker(wid, target, channel, lock, callback=None):
     log(INFO, f'Worker<{wid}> is running on target=<{target.__name__}> channel={channel.name} callback={callback}')
