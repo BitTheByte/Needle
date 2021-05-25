@@ -77,7 +77,6 @@ class FuturesChannel:
     def close_and_wait(self):
         self.close()
         self.wait()
-        
     def close(self):
         self.open = False
         log(INFO, f'Channel<{self.name}-{hex(id(self)).upper()}> close requested')
@@ -146,6 +145,7 @@ def FuturesChannelWorkers(channel: FuturesChannel, callback: FunctionType):
                 callback(result)
             time.sleep(0.1)
         channel.blocker.put(True)
+        channel.channel.shutdown()
         log(INFO, f'Channel<{channel.name}-{hex(id(channel)).upper()}> closed')
 
     threading.Thread(target=__pool__, name='NeedlePool').start()
