@@ -288,10 +288,10 @@ def __worker(wid, target, channel, lock, callback=None):
 
         if result.exception != None:
             log(ERROR, result.exception)
-        
+
         log(INFO, f'Worker<{wid}> finished {target.__name__}{args} -> {result._return}')
 
-        if  isinstance(callback, FunctionType) or  isinstance(callback, MethodType):
+        if isinstance(callback, (FunctionType, MethodType)):
             callback(result)
 
         with lock:
